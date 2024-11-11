@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using CodeSnippets.Models;
 
 namespace CodeSnippets.Data
 {
@@ -9,5 +10,6 @@ namespace CodeSnippets.Data
             : base(options)
         {
         }
+        public DbSet<CodeSnippets.Models.Snippet> Snippet { get; set; } = default!;
     }
 }
