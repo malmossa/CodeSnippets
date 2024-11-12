@@ -1,25 +1,26 @@
-﻿using CodeSnippets.Data;
+﻿using CodeSnippets.Data.Services;
+using CodeSnippets.Data;
 using CodeSnippets.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CodeSnippets.Controllers
 {
     public class SnippetsController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ISnippetsService _snippetsService;
 
-        public SnippetsController(ApplicationDbContext context)
+        public SnippetsController(ISnippetsService snippetsService)
         {
-            _context = context;
+            _snippetsService = snippetsService;
         }
 
         // GET: Snippets
         public async Task<IActionResult> Index()
         {
-            var applicationDbContext = _context.Snippet.Include(s => s.User);
-            return View(await applicationDbContext.ToListAsync());
+            return View(await _snippetsService.GetAll().ToListAsync());
         }
 
         // GET: Snippets/Details/5
@@ -30,9 +31,8 @@ namespace CodeSnippets.Controllers
                 return NotFound();
             }
 
-            var snippet = await _context.Snippet
-                .Include(s => s.User)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var snippet = await _snippetsService.GetById(id);
+                
             if (snippet == null)
             {
                 return NotFound();
@@ -44,7 +44,6 @@ namespace CodeSnippets.Controllers
         // GET: Snippets/Create
         public IActionResult Create()
         {
-            ViewData["IdentityUserId"] = new SelectList(_context.Users, "Id", "Id");
             return View();
         }
 
@@ -53,15 +52,14 @@ namespace CodeSnippets.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,Content,IdentityUserId,CreatedDate,UpdatedDate")] Snippet snippet)
+        public async Task<IActionResult> Create([Bind("Id,Title,Content,IdentityUserId,CreatedDate")] Snippet snippet)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(snippet);
-                await _context.SaveChangesAsync();
+                await _snippetsService.Add(snippet);
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["IdentityUserId"] = new SelectList(_context.Users, "Id", "Id", snippet.IdentityUserId);
+           
             return View(snippet);
         }
 
@@ -73,12 +71,14 @@ namespace CodeSnippets.Controllers
                 return NotFound();
             }
 
-            var snippet = await _context.Snippet.FindAsync(id);
-            if (snippet == null)
+            var snippet = await _snippetsService.GetById(id);
+
+            if (snippet.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier) || snippet == null)
             {
                 return NotFound();
             }
-            ViewData["IdentityUserId"] = new SelectList(_context.Users, "Id", "Id", snippet.IdentityUserId);
+
+           
             return View(snippet);
         }
 
@@ -87,7 +87,7 @@ namespace CodeSnippets.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Content,IdentityUserId,CreatedDate,UpdatedDate")] Snippet snippet)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Content,IdentityUserId")] Snippet snippet)
         {
             if (id != snippet.Id)
             {
@@ -96,25 +96,10 @@ namespace CodeSnippets.Controllers
 
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Update(snippet);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!SnippetExists(snippet.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+               await _snippetsService.Update(snippet);
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["IdentityUserId"] = new SelectList(_context.Users, "Id", "Id", snippet.IdentityUserId);
+
             return View(snippet);
         }
 
@@ -126,10 +111,9 @@ namespace CodeSnippets.Controllers
                 return NotFound();
             }
 
-            var snippet = await _context.Snippet
-                .Include(s => s.User)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (snippet == null)
+            var snippet = await _snippetsService.GetById(id);
+
+            if (snippet.IdentityUserId != User.FindFirstValue(ClaimTypes.NameIdentifier) || snippet == null)
             {
                 return NotFound();
             }
@@ -142,19 +126,15 @@ namespace CodeSnippets.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var snippet = await _context.Snippet.FindAsync(id);
+            var snippet = await _snippetsService.GetById(id);
+
             if (snippet != null)
             {
-                _context.Snippet.Remove(snippet);
+                await _snippetsService.Delete(snippet);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool SnippetExists(int id)
-        {
-            return _context.Snippet.Any(e => e.Id == id);
-        }
     }
 }
