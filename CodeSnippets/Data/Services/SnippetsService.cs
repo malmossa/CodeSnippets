@@ -31,21 +31,27 @@ namespace CodeSnippets.Data.Services
         }
 
 
-        public Task Add(Snippet snippet)
+        public async Task Add(Snippet snippet)
         {
-            throw new NotImplementedException();
+            _context.Snippet.Add(snippet);
+            await _context.SaveChangesAsync();
         }
 
-        public Task Delete(Snippet snippet)
+        public async Task<Snippet> Update(Snippet snippet)
         {
-            throw new NotImplementedException();
+            _context.Update(snippet);
+            await _context.SaveChangesAsync();
+
+            return snippet;
+        }
+
+        public async Task Delete(Snippet snippet)
+        {
+            _context.Remove(snippet);
+            await _context.SaveChangesAsync();
         }
 
 
 
-        public Task<Snippet> Update(Snippet snippet)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
